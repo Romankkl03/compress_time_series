@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from compress.xor_encode import xor_compress, decompress_xor
 from compress.bypass import geo_sort, get_corr_lists
+from compress.general_functions import get_float_bytes
 
 
 def xor_cluster_compress(df: pd.DataFrame) -> list:
@@ -62,3 +63,17 @@ def spatial_XOR_decompress(enc_dict):
     df.columns = cols
     df = df.sort_index(axis=1)
     return df
+
+
+def get_spatial_xor_memory(init_df, res: dict):
+    init_bytes = get_float_bytes(init_df)
+    total = 0
+    keys_res = res.keys()
+    for key in keys_res:
+        keys_clust = res[key].keys()
+        for k in keys_clust:
+            for l in res[key][k]:
+                total+=len(l)
+    total = total/8
+    print(f'Размер сжатых данных: {total} байт', '\n')
+    print(f'Коэффициент сжатия: {np.round(init_bytes/total, 3)}')

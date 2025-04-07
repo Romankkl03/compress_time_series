@@ -23,8 +23,6 @@ def zigzag_encoding(df):
     return res
 
 
-# def int_to_bits(n):
-#     return bin(n)[2:]
 def int_to_bits(n):
     """
     Кодирует целое число (включая отрицательные) в двоичное представление.
@@ -108,6 +106,7 @@ def bits_to_int(bits):
         return -(n >> 1) - 1
     
 def decode_sprintz(enc_str, first_row, cols, chunk_size = 8):
+    #ToDo add lz4
     first_row = [bits_to_int(bin_str) for bin_str in first_row]
     len_header = 3*cols
     bits = decode_header(enc_str[:len_header])
@@ -129,7 +128,7 @@ def decode_sprintz(enc_str, first_row, cols, chunk_size = 8):
     return res
 
 
-def decompress_sprintz(enc_str, num_cols = 5, chunk_size = 8):
+def decompress_sprintz(enc_str, num_cols = 6, chunk_size = 8):
     res = []
     for enc in enc_str:
         res.append(decode_sprintz(enc[1], enc[0], num_cols, chunk_size))

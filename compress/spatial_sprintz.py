@@ -30,14 +30,15 @@ def spatial_clustering_sprintz(df_init, x_y_dict, cor_lvl = 0.7):
                     iter_clust.append(sen)
                     sensors.remove(sen)
                 elif len(iter_clust) != 1:
+                    print(iter_clust)
                     cl_sp[iter_sen] = sprintz_cluster_compress(df_init[iter_clust])
                     iter_sen = sen
                     break
                 else:
                     #take compress for one
-                    cl_sp[iter_sen] = [lz4_one(df_init[iter_clust[0]].values/(10**10))]
+                    cl_sp[iter_sen] = [lz4_one(df_init[iter_clust[0]].values/(100))]
         else:
-            cl_sp[iter_sen] = [lz4_one(df_init[iter_clust[0]].values/(10**10))]
+            cl_sp[iter_sen] = [lz4_one(df_init[iter_clust[0]].values/(100))]
             break
     return cl_sp
 
@@ -45,7 +46,7 @@ def spatial_clustering_sprintz(df_init, x_y_dict, cor_lvl = 0.7):
 def lz4_decode(enc):
     decompressed_data = lz4.frame.decompress(enc)
     arr = np.frombuffer(decompressed_data, dtype=np.float64)
-    lst = list(arr*(10**10))
+    lst = list(arr*(100))
     lst = [int(x) for x in lst]
     return lst
 

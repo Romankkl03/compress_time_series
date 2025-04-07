@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import struct
 import sys
+from compress.general_functions import get_float_bytes
 
 
 def fxor(a, b):
@@ -14,13 +15,11 @@ def fxor(a, b):
 
 
 def float_to_binary(num):
-    #print(num)
     num = bytes(struct.pack('d', num))
     return bin(int.from_bytes(num, sys.byteorder))[2:].zfill(64)
 
 
 def xor_compress(ts):
-    #print(ts)
     result = []
     s = float_to_binary(ts[0])
     try:
@@ -116,10 +115,12 @@ def get_xor_memory(compressed_list):
     print(f'Память сжатых XOR данных: {infb/8} байт')
     
     
-def get_xor_memory_df(compressed_df):
+def get_xor_memory_df(init_df, compressed_df):
+    init_bytes = get_float_bytes(init_df)
     infb = 0
     for r in compressed_df:
         for s in r:
             infb += len(s)
-    print(f'Память сжатых XOR данных: {infb} бит')
-    print(f'Память сжатых XOR данных: {infb/8} байт')
+    comp_bytes = infb//8
+    print(f'Размер сжатых XOR данных: {comp_bytes} байт')
+    print(f'Коэффициент сжатия: {np.round(init_bytes/comp_bytes, 3)}')

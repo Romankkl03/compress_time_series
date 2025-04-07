@@ -2,6 +2,7 @@ import lz4.frame
 import pandas as pd
 import struct
 import numpy as np
+from compress.general_functions import get_float_bytes
 
 def LZ4_compress_df(df):
     compressed_df = {}
@@ -28,8 +29,10 @@ def lz4_one(arr):
     return [compressed, '']
 
 
-def get_lz4_memory(compressed_df):
+def get_lz4_memory(init_df, compressed_df):
+    init_bytes = get_float_bytes(init_df)
     memory = 0
     for col in compressed_df:
         memory += len(compressed_df[col])
     print(f'Размер сжатых данных: {memory} байт', '\n')
+    print(f'Коэффициент сжатия: {np.round(init_bytes/memory, 3)}')
