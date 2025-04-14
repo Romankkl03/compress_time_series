@@ -29,7 +29,7 @@ def lz4_one(arr):
     return [compressed, '']
 
 
-def get_lz4_memory(init_df, compressed_df):
+def get_compress_info_lz4(init_df, compressed_df):
     init_bytes = get_float_bytes(init_df)
     memory = 0
     for col in compressed_df:

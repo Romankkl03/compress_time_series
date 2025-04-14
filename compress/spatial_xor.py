@@ -65,7 +65,7 @@ def spatial_XOR_decompress(enc_dict):
     return df
 
 
-def get_spatial_xor_memory(init_df, res: dict):
+def get_compress_info_spatial_xor(init_df, res: dict):
     init_bytes = get_float_bytes(init_df)
     total = 0
     keys_res = res.keys()

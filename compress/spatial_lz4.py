@@ -3,7 +3,9 @@ import lz4.frame
 import pandas as pd
 from sklearn.decomposition import PCA
 from compress.bypass import geo_sort, get_corr_lists
+from compress.general_functions import get_float_bytes
 import pickle
+import sys
 
 
 def compress_pca(pca: PCA):
@@ -90,7 +92,6 @@ def spatial_lz4_decompress(enc_dict, clust_dict):
                                                     pca.components_.shape[0]) 
             res_dec = pca.inverse_transform(arr).transpose()
             res.extend(res_dec)
-    print(len(res))
     df = pd.DataFrame(res).transpose()
     cols = []
     for _, l in clust_dict.items():
@@ -101,3 +102,10 @@ def spatial_lz4_decompress(enc_dict, clust_dict):
     df.columns = cols
     df = df.sort_index(axis=1)
     return df
+
+
+def get_compress_info_spatial_PCA_LZ4(df, res):
+    init_mem = get_float_bytes(df)
+    total = sum(sys.getsizeof(v) for k in res.keys() for v in res[k])
+    print(f'Размер сжатых данных: {total} байт', '\n')
+    print(f'Коэффициент сжатия: {np.round(init_mem/total, 3)}')

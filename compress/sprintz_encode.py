@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+from compress.general_functions import get_memory_init
 
 def delta_encoding(df):
     delta = []
@@ -137,10 +137,12 @@ def decompress_sprintz(enc_str, num_cols = 6, chunk_size = 8):
     return df_res
 
 
-def get_sprintz_memory(enc_res):
+def get_compress_info_sprintz(df, enc_res):
+    init_mem = get_memory_init(df)
     infb = 0
     for r in enc_res:
         infb+=len(''.join(r[0]))
         infb+=len(r[1])
-    print(f'Память сжатых Sprintz данных: {infb} бит')
-    print(f'Память сжатых Sprintz данных: {infb//8} байт', '\n')
+    infb = infb//8
+    print(f'Размер сжатых данных: {infb} байт', '\n')
+    print(f'Коэффициент сжатия: {np.round(init_mem/infb, 3)}')

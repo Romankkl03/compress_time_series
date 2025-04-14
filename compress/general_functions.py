@@ -2,6 +2,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import random as rn
+from sklearn.metrics import mean_squared_error
 
 
 def get_memory_init(df):
@@ -52,3 +53,16 @@ def create_geo_plot(d: dict):
     plt.axhline(0, color='black', linewidth=0.5)  # Линия X=0
     plt.axvline(0, color='black', linewidth=0.5)  # Линия Y=0
     plt.show()
+
+
+def get_errors(df, dec_df):
+    mse = np.round(mean_squared_error(df, dec_df), 6)
+    print(f"MSE: {mse} \n")
+    true_all = df.values.flatten()
+    pred_all = dec_df.values.flatten()
+    mask = true_all != 0
+    true_all = true_all[mask]
+    pred_all = pred_all[mask]
+    overall_mape = np.nanmean(np.abs((true_all - pred_all)
+                                     / true_all)) * 100
+    print(f"MAPE: {np.round(overall_mape, 2)} %")

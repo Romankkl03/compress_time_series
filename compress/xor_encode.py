@@ -115,12 +115,12 @@ def get_xor_memory(compressed_list):
     print(f'Память сжатых XOR данных: {infb/8} байт')
     
     
-def get_xor_memory_df(init_df, compressed_df):
+def get_compress_info_xor(init_df, compressed_df):
     init_bytes = get_float_bytes(init_df)
     infb = 0
     for r in compressed_df:
         for s in r:
             infb += len(s)
     comp_bytes = infb//8
-    print(f'Размер сжатых XOR данных: {comp_bytes} байт')
+    print(f'Размер сжатых XOR данных: {comp_bytes} байт \n')
     print(f'Коэффициент сжатия: {np.round(init_bytes/comp_bytes, 3)}')

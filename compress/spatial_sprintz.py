@@ -4,6 +4,7 @@ import pandas as pd
 from compress.bypass import geo_sort, get_corr_lists
 from compress.sprintz_encode import compress_sprintz, decompress_sprintz
 from compress.spatial_lz4 import lz4_one
+from compress.general_functions import get_memory_init
 
 
 def sprintz_cluster_compress(df_comp: pd.DataFrame) -> list:
@@ -30,7 +31,7 @@ def spatial_clustering_sprintz(df_init, x_y_dict, cor_lvl = 0.7):
                     iter_clust.append(sen)
                     sensors.remove(sen)
                 elif len(iter_clust) != 1:
-                    print(iter_clust)
+                    # print(iter_clust)
                     cl_sp[iter_sen] = sprintz_cluster_compress(df_init[iter_clust])
                     iter_sen = sen
                     break
@@ -47,7 +48,7 @@ def lz4_decode(enc):
     decompressed_data = lz4.frame.decompress(enc)
     arr = np.frombuffer(decompressed_data, dtype=np.float64)
     lst = list(arr*(100))
-    lst = [int(x) for x in lst]
+    lst = [int(np.round(x)) for x in lst]
     return lst
 
 
@@ -76,3 +77,21 @@ def spatial_sprintz_decompress(enc_dict, clust_dict):
                if not res.empty else res_clust_df)
     res = res.sort_index(axis=1)
     return res
+
+
+def get_compress_info_spatial_sprintz(df, res):
+    init_mem = get_memory_init(df)
+    total = 0
+    res_keys = res.keys()
+    for k in res_keys:
+        if len(res[k]) == 1:
+            total += len(res[k][0])
+        else:
+            infb = 0
+            for r in res[k]:
+                infb+=len(''.join(r[0]))
+                infb+=len(r[1])
+            infb = infb//8
+            total += infb
+    print(f'Размер сжатых данных: {total} байт', '\n')
+    print(f'Коэффициент сжатия: {np.round(init_mem/total, 3)}')
