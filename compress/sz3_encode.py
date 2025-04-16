@@ -22,7 +22,7 @@ def compress_sz3_df(df):
     return enc_data
 
 
-def decompress_sz3(enc_data, shape, type='float64'):
+def decompress_sz3(enc_data, shape, type=np.float64):
     if isinstance(enc_data, np.ndarray):
         data_dec = sz.decompress(enc_data, shape, type)
     else:
