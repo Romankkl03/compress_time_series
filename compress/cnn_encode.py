@@ -3,12 +3,29 @@ from compress.sz3_encode import compress_sz3_all, decompress_sz3
 from sz.SZ3.tools.pysz.pysz import SZ
 from compress.general_functions import get_float_bytes
 import sys
+import os
 import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Flatten, SeparableConv1D
+from tensorflow.keras.layers import Input, Dense, Flatten, SeparableConv1D, Concatenate
 from tensorflow.keras.models import Model
 import lz4.frame
 import numpy as np
+import pywt
+import matplotlib.pyplot as plt
+import time
+import zstandard as zstd
+
+
+def create_training_plot(history):
+    plt.figure(figsize=(10, 5))
+    plt.plot(history.history['loss'], label='Loss')
+    plt.title('Training Loss over Epochs')
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 
 lib_extension = {
@@ -18,12 +35,17 @@ lib_extension = {
 sz = SZ(f"/usr/local/lib/{lib_extension}")
 
 
-def compress_model(model):
-    model.export("saved_model")  
+def compress_model(model, model_compress="zstd"):
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    model.export("saved_model")
     converter = tf.lite.TFLiteConverter.from_saved_model("saved_model")
+    converter.experimental_sparsify_model = True
     tflite_model = converter.convert()
-    compressed_model = lz4.frame.compress(tflite_model)
-    #TODO: add path
+    if model_compress == "zstd":
+        compressed_model = zstd.ZstdCompressor(level=10).compress(tflite_model)
+    else:
+        compressed_model = lz4.frame.compress(tflite_model)
+    print('Size of compressed model (bytes):', len(compressed_model))
     return compressed_model
 
 
@@ -37,7 +59,7 @@ def decompress_sz3_one(v, shape, v_type=np.float64):
     return data_dec
 
 
-def get_learned_model(df, window_size=64):
+def get_learned_model(df, window_size=64, num_epochs=50, plot_flag=False, model_compress="zstd"):
     main_sensor = df.iloc[:, 0].values.astype(np.float32)
     dependent_sensors = df.iloc[:, 1:].values.astype(np.float32)
     X = main_sensor.reshape(-1, 1)
@@ -50,7 +72,7 @@ def get_learned_model(df, window_size=64):
         Y_targets.append(Y[i+window_size]) 
     X_windows = np.array(X_windows).reshape(-1, window_size, 1)
     Y_targets = np.array(Y_targets).reshape(-1, output_dim)
-
+    
     inputs = Input(shape=(window_size, 1))
     x = SeparableConv1D(2, kernel_size=3,
                         activation='selu',
@@ -58,25 +80,86 @@ def get_learned_model(df, window_size=64):
     x = Flatten()(x)
     x = Dense(4, activation='selu')(x)  
     outputs = Dense(output_dim, activation='sigmoid')(x)
+
     model = Model(inputs, outputs)
     model.compile(optimizer='adam', loss='mse')
-    model.fit(X_windows, Y_targets, epochs=50, batch_size=64, verbose=1)
+    start_time = time.time()
+    history = model.fit(X_windows, Y_targets, epochs=num_epochs, batch_size=16, verbose=0, validation_split=0)
+    end_time = time.time()
+    training_time = end_time - start_time
+    print(f"Время обучения: {training_time:.2f} секунд")
+    if plot_flag == True:
+        create_training_plot(history)
     return model
 
 
-def compress_cnn_cluster(df):
+def get_learned_model_dwt(df, window_size=64, num_epochs=50, plot_flag=False, model_compress="zstd"):
+    main_sensor = df.iloc[:, 0].values.astype(np.float32)
+    dependent_sensors = df.iloc[:, 1:].values.astype(np.float32)
+    output_dim = dependent_sensors.shape[1]
+
+    X_windows = []
+    X_dwt_feats = []
+    Y_targets = []
+
+    wavelet = 'db4'
+    dwt_level = 2
+
+    for i in range(len(main_sensor) - window_size):
+        window = main_sensor[i:i+window_size]
+        X_windows.append(window.reshape(-1, 1))
+
+        dwt_coeffs = pywt.wavedec(window, wavelet=wavelet, level=dwt_level)
+        dwt_feat = np.concatenate(dwt_coeffs)
+        X_dwt_feats.append(dwt_feat)
+
+        Y_targets.append(dependent_sensors[i + window_size])
+
+    X_windows = np.array(X_windows)
+    X_dwt_feats = np.array(X_dwt_feats)
+    Y_targets = np.array(Y_targets)
+
+    input_seq = Input(shape=(window_size, 1), name="seq_input")
+    x_seq = SeparableConv1D(4, kernel_size=3, activation='selu', padding='same')(input_seq)
+    x_seq = Flatten()(x_seq)
+
+    input_dwt = Input(shape=(X_dwt_feats.shape[1],), name="dwt_input")
+    x = Concatenate()([x_seq, input_dwt])
+    x = Dense(16, activation='selu')(x)
+    x = Dense(8, activation='selu')(x)
+    output = Dense(output_dim, activation='sigmoid')(x)
+
+    model = Model(inputs=[input_seq, input_dwt], outputs=output)
+    model.compile(optimizer='adam', loss='mse')
+    history = model.fit([X_windows, X_dwt_feats], Y_targets, epochs=num_epochs, batch_size=16, verbose=0)
+    if plot_flag == True:
+        create_training_plot(history)
+    return model
+
+
+def compress_cnn_cluster(df, use_dwt=False, window_size=64, num_epochs=50, plot_flag=False, model_compress="zstd"):
     main_sensor = compress_sz3_one(df.iloc[:, 0].values)
     main_sen = decompress_sz3_one(main_sensor, (df.shape[0],))
     df.iloc[:,0] = main_sen
-    model = get_learned_model(df)
-    compressed_model = compress_model(model)
+    if use_dwt:
+        model = get_learned_model_dwt(df, window_size, num_epochs, plot_flag) #, plot_flag
+    else:
+        model = get_learned_model(df, window_size, num_epochs, plot_flag)
+    compressed_model = compress_model(model, model_compress)
     main_sensor = compress_sz3_one(df.iloc[:, 0].values)
-    remainder = compress_sz3_all(df.iloc[:64, 1:])
+    remainder = compress_sz3_all(df.iloc[:window_size, 1:])
     res = [main_sensor, compressed_model, remainder]
     return res
 
 
-def compress_cnn_sz3(df_init, x_y_dict, cor_lvl = 0.8):
+def compress_cnn_sz3(df_init,
+                     x_y_dict,
+                     cor_lvl = 0.8,
+                     use_dwt=False,
+                     window_size=64,
+                     num_epochs=50,
+                     plot_flag=False,
+                     model_compress="zstd"):
     cl_sp = {}
     sensors = list(df_init.columns)
     iter_sen = sensors[0]
@@ -92,7 +175,8 @@ def compress_cnn_sz3(df_init, x_y_dict, cor_lvl = 0.8):
                     iter_clust.append(sen)
                     sensors.remove(sen)
                 elif len(iter_clust)>1: 
-                    cl_sp[tuple(iter_clust)] = compress_cnn_cluster(df_init[iter_clust])
+                    cl_sp[tuple(iter_clust)] = compress_cnn_cluster(df_init[iter_clust], use_dwt, 
+                                                                    window_size, num_epochs, plot_flag, model_compress)
                     iter_sen = sen
                     break
                 else:
@@ -106,8 +190,12 @@ def compress_cnn_sz3(df_init, x_y_dict, cor_lvl = 0.8):
     return cl_sp
 
 
-def get_model(compressed_model):
-    decompressed_tflite = lz4.frame.decompress(compressed_model)
+def get_model(compressed_model, model_compress="zstd"):
+    if model_compress == "zstd":
+        decompressor = zstd.ZstdDecompressor()
+        decompressed_tflite = decompressor.decompress(compressed_model)
+    else:
+        decompressed_tflite = lz4.frame.decompress(compressed_model)
     interpreter = tf.lite.Interpreter(model_content=decompressed_tflite)
     interpreter.allocate_tensors()
     return interpreter
@@ -132,16 +220,47 @@ def get_predict(interpreter, main_sensor, window_size=64):
     return restored_Y
 
 
-def decomress_cnn_sz3(res, shape):
+def get_predict_dwt(interpreter, main_sensor, window_size=64):
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    X_windows = []
+    X_dwt_feats = []
+    wavelet = 'db4'
+    dwt_level = 2
+    for i in range(len(main_sensor) - window_size):
+        window = main_sensor[i:i+window_size]
+        X_windows.append(window.reshape(-1, 1))
+
+        dwt_coeffs = pywt.wavedec(window, wavelet=wavelet, level=dwt_level)
+        dwt_feat = np.concatenate(dwt_coeffs)
+        X_dwt_feats.append(dwt_feat)
+
+    X_windows = np.array(X_windows).astype(np.float32)
+    X_dwt_feats = np.array(X_dwt_feats).astype(np.float32)
+    restored_Y = []
+    for i in range(len(X_windows)):
+        interpreter.set_tensor(input_details[0]['index'], X_windows[i:i+1])
+        interpreter.set_tensor(input_details[1]['index'], X_dwt_feats[i:i+1])
+        interpreter.invoke()
+        output = interpreter.get_tensor(output_details[0]['index'])
+        restored_Y.append(output[0])
+    restored_Y = np.array(restored_Y)
+    return restored_Y
+
+
+def decomress_cnn_sz3(res, shape, use_dwt=False, window_size=64, model_compress="zstd"):
     sens = res.keys()
     dec_res = {}
     for s in sens:
         main_sen = decompress_sz3_one(res[s][0], shape)
         dec_res[s[0]] = main_sen
         if len(s) > 1:
-            remander = decompress_sz3(res[s][2], (64,len(s)-1)).values.transpose()
-            interpeter = get_model(res[s][1])
-            preds = get_predict(interpeter, main_sen)
+            remander = decompress_sz3(res[s][2], (window_size,len(s)-1)).values.transpose()
+            interpeter = get_model(res[s][1], model_compress)
+            if use_dwt:
+                preds = get_predict_dwt(interpeter, main_sen)
+            else:
+                preds = get_predict(interpeter, main_sen)
             preds = np.concatenate((remander, preds)).transpose()
             for dep_sen, val in zip(s[1:], preds):
                 dec_res[dep_sen] = val
