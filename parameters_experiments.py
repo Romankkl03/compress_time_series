@@ -1,0 +1,30 @@
+exp_AT = {
+    cor_lvl=0.82,
+    window_size=64,
+    num_epochs=170,
+    extra_layer=True,
+    conv_filter=3,
+    er_abs_sz3=0.03,
+    num_epochs_dwt=350,
+    conv_filter_dwt=3
+}
+exp_CZ = {
+    cor_lvl=0.9,
+    window_size=64,
+    num_epochs=170,
+    extra_layer=True,
+    conv_filter=3,
+    er_abs_sz3=0.03,
+    num_epochs_dwt=350,
+    conv_filter_dwt=3
+}
+exp_PL = {
+    cor_lvl=0.87,
+    window_size=64,
+    num_epochs=200,
+    extra_layer=True,
+    conv_filter=3,
+    er_abs_sz3=0.03,
+    num_epochs_dwt=250,
+    conv_filter_dwt=3
+}

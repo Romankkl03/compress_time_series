@@ -36,3 +36,4 @@ def get_compress_info_lz4(init_df, compressed_df):
         memory += len(compressed_df[col])
     print(f'Размер сжатых данных: {memory} байт', '\n')
     print(f'Коэффициент сжатия: {np.round(init_bytes/memory, 3)}')
+    return np.round(init_bytes/memory, 3)

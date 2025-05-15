@@ -13,9 +13,9 @@ def xor_cluster_compress(df: pd.DataFrame) -> list:
         res[cols[num_ts]] = xor_compress(list((df[cols[0]]-df[cols[num_ts]]).values))
     return res
 
-def spatial_clustering_xor(df, x_y_dict):
+
+def spatial_clustering_xor(df, x_y_dict, cor_lvl=0.85):
     cl_sp = {}
-    cor_lvl = 0.7
     sensors = list(df.columns)
     iter_sen = sensors[0]
     while len(sensors)!=0:
@@ -29,8 +29,12 @@ def spatial_clustering_xor(df, x_y_dict):
                 if cor>cor_lvl:
                     iter_clust.append(sen)
                     sensors.remove(sen)
-                else:   
+                elif len(iter_clust)>1:
                     cl_sp[iter_sen] = xor_cluster_compress(df[iter_clust])
+                    iter_sen = sen
+                    break
+                else:   
+                    cl_sp[iter_sen] = {iter_sen: xor_compress(list(df[iter_clust].values))}
                     iter_sen = sen
                     break
         else:
@@ -77,3 +81,4 @@ def get_compress_info_spatial_xor(init_df, res: dict):
     total = total/8
     print(f'Размер сжатых данных: {total} байт', '\n')
     print(f'Коэффициент сжатия: {np.round(init_bytes/total, 3)}')
+    return np.round(init_bytes/total, 3)

@@ -146,3 +146,4 @@ def get_compress_info_sprintz(df, enc_res):
     infb = infb//8
     print(f'Размер сжатых данных: {infb} байт', '\n')
     print(f'Коэффициент сжатия: {np.round(init_mem/infb, 3)}')
+    return np.round(init_mem/infb, 3)

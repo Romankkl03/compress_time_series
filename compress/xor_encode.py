@@ -124,3 +124,4 @@ def get_compress_info_xor(init_df, compressed_df):
     comp_bytes = infb//8
     print(f'Размер сжатых XOR данных: {comp_bytes} байт \n')
     print(f'Коэффициент сжатия: {np.round(init_bytes/comp_bytes, 3)}')
+    return np.round(init_bytes/comp_bytes, 3)

@@ -95,3 +95,4 @@ def get_compress_info_spatial_sprintz(df, res):
             total += infb
     print(f'Размер сжатых данных: {total} байт', '\n')
     print(f'Коэффициент сжатия: {np.round(init_mem/total, 3)}')
+    return np.round(init_mem/total, 3)

@@ -58,6 +58,10 @@ def spatial_clustering_PCA_LZ4(df_init, x_y_dict, cor_lvl = 0.8):
                     cl_sp[iter_sen] = dec_one
                     iter_sen = sen
                     break
+                if not sensors and len(iter_clust)>1:
+                    cl_sp[iter_sen] = LZ4_pca_compress(df_init[iter_clust])
+                    iter_sen = sen
+                    break
         else:
             arr = df_init[iter_sen].values
             arr_bytes = arr.tobytes()
@@ -109,3 +113,4 @@ def get_compress_info_spatial_PCA_LZ4(df, res):
     total = sum(sys.getsizeof(v) for k in res.keys() for v in res[k])
     print(f'Размер сжатых данных: {total} байт', '\n')
     print(f'Коэффициент сжатия: {np.round(init_mem/total, 3)}')
+    return np.round(init_mem/total, 3)
