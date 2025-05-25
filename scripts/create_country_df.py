@@ -3,7 +3,11 @@ import yaml
 import zipfile
 import requests
 import pandas as pd
-from settings import DATA_PATH, GEO_PATH
+from settings import (
+    DATA_PATH,
+    GEO_PATH,
+    COUNTRY_DF_URL
+)
 
 
 def get_country_df():
@@ -12,7 +16,7 @@ def get_country_df():
     if not os.path.exists(DATA_PATH / "country_df.csv"):
         if not os.path.exists(zip_path):
             print("Скачиваем архив")
-            response = requests.get(url, stream=True)
+            response = requests.get(COUNTRY_DF_URL, stream=True)
             with open(zip_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)

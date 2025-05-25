@@ -1,5 +1,5 @@
 from compress.bypass import geo_sort, get_corr_lists
-from compress.sz3_encode import compress_sz3_all, decompress_sz3, compress_sz3_df
+from compress.sz3_encode import decompress_sz3, compress_sz3_df
 from sz.SZ3.tools.pysz.pysz import SZ
 from compress.general_functions import get_float_bytes
 import sys
@@ -10,8 +10,6 @@ import pandas as pd
 # Подавляем C++ логи TensorFlow
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Только ошибки
 os.environ['ABSL_CPP_MIN_LOG_LEVEL'] = '3'  # Только ошибки absl
-
-# Установим параметры логирования absl (через стандартный логгер TensorFlow не работает)
 os.environ['FLAGS_logtostderr'] = '0'
 os.environ['FLAGS_minloglevel'] = '3'
 os.environ['GLOG_minloglevel'] = '3'
@@ -67,6 +65,7 @@ lib_extension = {
     }.get(sys.platform, "libSZ3c.so")  # Linux (по умолчанию)
 sz = SZ(f"/usr/local/lib/{lib_extension}")
 
+
 def compress_model(model, model_compress="zstd"):
     with suppress_all_output():
         model.export("saved_model")
@@ -79,17 +78,6 @@ def compress_model(model, model_compress="zstd"):
             compressed_model = lz4.frame.compress(tflite_model)
     print('Size of compressed model (bytes):', len(compressed_model))
     return compressed_model
-# def compress_model(model, model_compress="zstd"):
-#     model.export("saved_model")
-#     converter = tf.lite.TFLiteConverter.from_saved_model("saved_model")
-#     converter.experimental_sparsify_model = True
-#     tflite_model = converter.convert()
-#     if model_compress == "zstd":
-#         compressed_model = zstd.ZstdCompressor(level=10).compress(tflite_model)
-#     else:
-#         compressed_model = lz4.frame.compress(tflite_model)
-#     print('Size of compressed model (bytes):', len(compressed_model))
-#     return compressed_model
 
 
 def compress_sz3_one(d, er_abs_sz3=0.0001):
@@ -216,6 +204,20 @@ def compress_cnn_sz3(df_init,
                      plot_flag=False,
                      er_abs_sz3=0.0001,
                      model_compress="zstd"):
+    """
+    Params:
+    df_init (pd.DataFrame): Dataframe for compression.
+    x_y_dict (dict): Dict with geodata of sensors.
+    cor_lvl (float): Min level of correlation to add sensor in cluster. 
+    use_dwt (boolean): Flag to use dwt-features.
+    window_size (int): Size of window for series.
+    num_epochs (int): Number of epochs for model learning.
+    extra_layer (boolean): Flag to use extra layer in model without dwt.
+    conv_filter (int): Number of filters in convolution layer.
+    plot_flag (boolean): Flag to draw learning plot.
+    er_abs_sz3 (float): Value of absolute arror for SZ3.
+    model_compress (str): Algorithm for model compression (lz4/zstd).
+    """
     cl_sp = {}
     sensors = list(df_init.columns)
     iter_sen = sensors[0]

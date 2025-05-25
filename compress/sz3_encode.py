@@ -1,5 +1,4 @@
 import numpy as np
-from pathlib import Path
 import sys
 import pandas as pd
 from sz.SZ3.tools.pysz.pysz import SZ
@@ -9,7 +8,7 @@ from compress.general_functions import get_float_bytes
 lib_extension = {
         "darwin": "libSZ3c.dylib",  # macOS
         "win32": "SZ3c.dll",  # Windows
-    }.get(sys.platform, "libSZ3c.so")  # Linux (по умолчанию)
+    }.get(sys.platform, "libSZ3c.so")  # Linux
 sz = SZ(f"/usr/local/lib/{lib_extension}")
 
 

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from compress.general_functions import get_memory_init
 
+
 def delta_encoding(df):
     delta = []
     for i in range(1, df.shape[0]):
@@ -24,18 +25,14 @@ def zigzag_encoding(df):
 
 
 def int_to_bits(n):
-    """
-    Кодирует целое число (включая отрицательные) в двоичное представление.
-    """
     if n >= 0:
-        return bin(n << 1)[2:]  # Сдвиг влево для положительных чисел
+        return bin(n << 1)[2:]
     else:
-        return bin((n << 1) ^ -1)[2:]  # Сдвиг влево и XOR для отрицательных чисел
+        return bin((n << 1) ^ -1)[2:]
 
 
 def sprintz_encode(chunk_df):
     align = 16
-    #ToDo: add len for header format
     enc = [[int_to_bits(value) for value in chunk_df.iloc[0].to_list()]]
     delta = delta_encoding(chunk_df)
     zigzag = zigzag_encoding(delta)
@@ -43,7 +40,7 @@ def sprintz_encode(chunk_df):
     max_val = [format(m, '08b') for m in max_val]
     max_len = [8-(m.find('1')) if '1' in m else 0 for m in max_val]
     header = ''.join([format(m, '03b') for m in max_len])
-    zigzag = [list(row) for row in zip(*zigzag)] #transpose
+    zigzag = [list(row) for row in zip(*zigzag)]
     bin = ''
     for i in range(len(zigzag)):
         bits = max_len[i]
@@ -59,7 +56,6 @@ def compress_sprintz(df, chunk_size = 8):
     res = []
     for i in range(0, len(df), chunk_size):
         chunk_df = df.iloc[i:i+chunk_size].copy()
-        #ToDo: find max appropriate chunk_size
         res.append(sprintz_encode(chunk_df))
     return res
 
@@ -96,17 +92,14 @@ def get_row_num(length, chunk_num, bits):
         return int(length/sum(bits))
 
 def bits_to_int(bits):
-    """
-    Декодирует двоичное представление обратно в целое число.
-    """
-    n = int(bits, 2)  # Преобразование строки битов в целое число
-    if n & 1 == 0:  # Если последний бит равен 0 (положительное число)
+    n = int(bits, 2)
+    if n & 1 == 0:
         return n >> 1
-    else:  # Если последний бит равен 1 (отрицательное число)
+    else:
         return -(n >> 1) - 1
-    
+
+
 def decode_sprintz(enc_str, first_row, cols, chunk_size = 8):
-    #ToDo add lz4
     first_row = [bits_to_int(bin_str) for bin_str in first_row]
     len_header = 3*cols
     bits = decode_header(enc_str[:len_header])

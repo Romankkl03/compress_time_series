@@ -1,8 +1,8 @@
 import lz4.frame
 import pandas as pd
-import struct
 import numpy as np
 from compress.general_functions import get_float_bytes
+
 
 def LZ4_compress_df(df):
     compressed_df = {}
